@@ -108,8 +108,8 @@ input[type=number]:focus,select:focus{outline:2px solid var(--brand);outline-off
 
 /* notice */
 .notice{
-  background:var(--brand-soft);border-radius:10px;padding:12px 14px;
-  font-size:14px;color:var(--brand-ink);margin-bottom:16px;line-height:1.55;
+  background:var(--brand-soft);border-radius:10px;padding:14px 18px;
+  font-size:14px;color:var(--brand-ink);margin-bottom:16px;line-height:1.6;
 }
 .notice.warn{background:#fdf0ec;color:#8a3524}
 .status{font-size:14px;color:var(--muted);margin-top:10px;min-height:20px}
@@ -133,7 +133,12 @@ footer .safe{color:var(--brand);font-weight:600}
 }
 .tool:active{transform:scale(.995);border-color:var(--brand)}
 .tool .body{flex:1;min-width:0}
-.tool .arrow{flex:none;color:#8c887f;font-size:26px;line-height:1;padding-top:0}
+.tool .arrow{
+  flex:none;width:28px;height:28px;border-radius:50%;
+  background:var(--brand-soft);color:var(--brand);
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;font-weight:700;line-height:1;margin-top:1px;
+}
 .tool .t{font-size:17px;font-weight:700;margin-bottom:5px}
 .tool .d{font-size:14px;color:var(--muted);line-height:1.6}
 .tool .tag{
