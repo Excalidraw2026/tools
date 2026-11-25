@@ -22,13 +22,13 @@
 
   <div class="drop" id="drop">
     <div class="big">点这里选图片</div>
-    <div class="sub">也可以直接把图片拖进来 · 支持一次选多张</div>
+    <div class="sub">一次可选多张 · 电脑上也可以直接把图拖进来</div>
     <input type="file" id="file" accept="image/*" multiple>
   </div>
 
   <div class="card" style="margin-top:14px">
     <div class="field">
-      <label>压到多大以内</label>
+      <label>压到多大以内（单位 KB）</label>
       <div class="chips" id="chips">
         <button class="chip" data-k="100">100K</button>
         <button class="chip on" data-k="200">200K</button>
@@ -39,7 +39,7 @@
       <div class="hint">1M = 1024K。不确定就选 200K，大部分网站够用。</div>
     </div>
     <div class="field">
-      <label>或者自己填一个数（K）</label>
+      <label>或者自己填一个数（单位 KB）</label>
       <input type="number" id="target" value="200" min="10" max="20480" step="10" inputmode="numeric">
       <div class="hint">比如对方要求「不超过 512KB」，就填 512。</div>
     </div>
@@ -152,7 +152,8 @@
       files.splice(i, 1);
       render();
     }));
-    actions.style.display = files.length ? 'flex' : 'none';
+    actions.style.display = 'flex';
+    document.getElementById('go').disabled = files.length === 0;
     actions2.style.display = files.some(f => f.outBlob) ? 'flex' : 'none';
   }
 
