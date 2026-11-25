@@ -22,7 +22,7 @@
 
   <div class="drop" id="drop">
     <div class="big">点这里选图片</div>
-    <div class="sub">按选的顺序拼，选完可以上下调</div>
+    <div class="sub">按选的顺序拼 · 电脑上也可以直接把图拖进来</div>
     <input type="file" id="file" accept="image/*" multiple>
   </div>
 
@@ -144,7 +144,8 @@
       outBlob = null; actions2.style.display = 'none';
       render();
     }));
-    actions.style.display = items.length ? 'flex' : 'none';
+    actions.style.display = 'flex';
+    document.getElementById('go').disabled = items.length === 0;
   }
 
   function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
