@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>多张图片合成一个 PDF · 在线免费</title>
+<meta name="description" content="把照片按顺序合成一个 PDF，A4 或原图尺寸。文件不上传。">
+<link rel="stylesheet" href="../assets/common.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap"><a class="back" href="../index.html">‹ 返回</a><h1>图片转 PDF</h1></div>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <h2>几张照片，合成一个 PDF</h2>
+    <p>交材料、发简历、传证明，对方要的常常是一个文件，不是十张图。</p>
+  </div>
+
+  <div class="drop" id="drop">
+    <div class="big">点这里选图片</div>
+    <div class="sub">一次可选多张，选好以后顺序可以调</div>
+    <input type="file" id="file" accept="image/*" multiple>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="field">
+      <label>页面多大</label>
+      <div class="chips" id="size">
+        <button class="chip on" data-v="a4p">A4 竖</button>
+        <button class="chip" data-v="a4l">A4 横</button>
+        <button class="chip" data-v="orig">按图片尺寸</button>
+      </div>
+      <div class="hint">交材料基本都用 A4 竖。选「按图片尺寸」文件会更小，但打印时会按原比例缩。</div>
+    </div>
+  </div>
+
+  <div class="list" id="list"></div>
+
+  <div class="btn-row" id="actions" style="display:none">
+    <button class="btn ghost" id="clear">清空</button>
+    <button class="btn" id="go">生成 PDF</button>
+  </div>
+  <div class="btn-row" id="actions2" style="display:none">
+    <button class="btn" id="download">下载 PDF</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <footer>
+    <p><span class="safe">照片没有离开你的设备。</span>PDF 是在浏览器里拼出来的，中间没有服务器。</p>
+    <p>一次别超过 20 张，多了手机可能会卡。</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const drop = document.getElementById('drop');
+  const fileInput = document.getElementById('file');
+  const listEl = document.getElementById('list');
+  const statusEl = document.getElementById('status');
+  const actions = document.getElementById('actions');
+  const actions2 = document.getElementById('actions2');
+  const sizeBox = document.getElementById('size');
+
+  let items = [];   // {file,url}
+  let pdfBlob = null;
+  let busy = false;
+
+  sizeBox.addEventListener('click', e => {
+    const b = e.target.closest('.chip');
+    if (!b) return;
+    [...sizeBox.children].forEach(c => c.classList.remove('on'));
+    b.classList.add('on');
+  });
+  function getSize() {
+    return sizeBox.querySelector('.chip.on').dataset.v;
+  }
+
+  drop.addEventListener('click', () => fileInput.click());
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); add([...e.dataTransfer.files]); });
+  fileInput.addEventListener('change', () => { add([...fileInput.files]); fileInput.value = ''; });
+
+  function add(fs) {
+    const imgs = fs.filter(f => f.type.startsWith('image/'));
+    if (!imgs.length) return;
+    for (const f of imgs) items.push({ file: f, url: URL.createObjectURL(f) });
+    pdfBlob = null;
+    actions2.style.display = 'none';
+    render();
+    setStatus('');
+  }
+
+  document.getElementById('clear').addEventListener('click', () => {
+    if (busy) return;
+    items.forEach(i => URL.revokeObjectURL(i.url));
+    items = []; pdfBlob = null;
+    render(); setStatus('');
+  });
+
+  function render() {
+    listEl.innerHTML = '';
+    items.forEach((it, i) => {
+      const div = document.createElement('div');
+      div.className = 'item';
+      div.innerHTML = `
+        <img class="thumb" src="${it.url}" alt="">
+        <div class="meta">
+          <div class="name">第 ${i + 1} 页 · ${esc(it.file.name)}</div>
+          <div class="size">${fmt(it.file.size)}</div>
+        </div>
+        <button class="x" data-a="up" data-i="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button class="x" data-a="down" data-i="${i}" ${i === items.length - 1 ? 'disabled' : ''}>↓</button>
+        <button class="x" data-a="del" data-i="${i}">×</button>`;
+      listEl.appendChild(div);
+    });
+    listEl.querySelectorAll('.x').forEach(b => b.addEventListener('click', () => {
+      if (busy) return;
+      const i = Number(b.dataset.i), a = b.dataset.a;
+      if (a === 'del') { URL.revokeObjectURL(items[i].url); items.splice(i, 1); }
+      if (a === 'up' && i > 0) [items[i - 1], items[i]] = [items[i], items[i - 1]];
+      if (a === 'down' && i < items.length - 1) [items[i + 1], items[i]] = [items[i], items[i + 1]];
+      pdfBlob = null; actions2.style.display = 'none';
+      render();
+    }));
+    actions.style.display = items.length ? 'flex' : 'none';
+  }
+
+  function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+  function fmt(b){ return b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(0) + ' K' : (b/1048576).toFixed(2) + ' M'; }
+  function setStatus(m, bad){ statusEl.textContent = m; statusEl.className = 'status' + (bad ? ' bad' : ''); }
+
+  async function loadBitmap(file) {
+    if (window.createImageBitmap) {
+      try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch (e) {}
+      try { return await createImageBitmap(file); } catch (e) {}
+    }
+    return await new Promise((res, rej) => {
+      const img = new Image();
+      img.onload = () => res(img);
+      img.onerror = rej;
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  async function toJpeg(bitmap, maxSide) {
+    let w = bitmap.width, h = bitmap.height;
+    if (maxSide && Math.max(w, h) > maxSide) {
+      const s = maxSide / Math.max(w, h);
+      w = Math.round(w * s); h = Math.round(h * s);
+    }
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85));
+    return { blob, w, h };
+  }
+
+  // ---- 精简 PDF 生成：JPEG 用 DCTDecode 直接嵌，不重编码 ----
+  function buildPdf(pages) {
+    // pages: [{jpeg:Uint8Array, w, h, pageW, pageH}]
+    const enc = (s) => {
+      const u = new Uint8Array(s.length);
+      for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i) & 0xFF;
+      return u;
+    };
+    const parts = [];
+    let byteLen = 0;
+    const offsets = {};
+    const push = (x) => {
+      const u = typeof x === 'string' ? enc(x) : x;
+      parts.push(u); byteLen += u.length;
+    };
+    const mark = (num) => { offsets[num] = byteLen; };
+
+    push('%PDF-1.4\n%\xe2\xe3\xcf\xd3\n');
+
+    const n = pages.length;
+    const pageObj = (i) => 3 + i * 3;
+    const contentObj = (i) => 4 + i * 3;
+    const imageObj = (i) => 5 + i * 3;
+    const maxObj = 2 + n * 3;
+
+    // 1: catalog
+    mark(1);
+    push('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+
+    // 2: pages
+    mark(2);
+    const kids = pages.map((_, i) => `${pageObj(i)} 0 R`).join(' ');
+    push(`2 0 obj\n<< /Type /Pages /Kids [${kids}] /Count ${n} >>\nendobj\n`);
+
+    for (let i = 0; i < n; i++) {
+      const p = pages[i];
+      // page
+      mark(pageObj(i));
+      push(`${pageObj(i)} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${p.pageW.toFixed(2)} ${p.pageH.toFixed(2)}] `
+        + `/Resources << /XObject << /Im0 ${imageObj(i)} 0 R >> >> /Contents ${contentObj(i)} 0 R >>\nendobj\n`);
+
+      // content: 把图 fit 到页面里居中
+      const m = p.margin || 0;
+      const availW = p.pageW - m * 2, availH = p.pageH - m * 2;
+      const s = Math.min(availW / p.w, availH / p.h);
+      const dw = p.w * s, dh = p.h * s;
+      const dx = (p.pageW - dw) / 2, dy = (p.pageH - dh) / 2;
+      const stream = `q\n${dw.toFixed(2)} 0 0 ${dh.toFixed(2)} ${dx.toFixed(2)} ${dy.toFixed(2)} cm\n/Im0 Do\nQ\n`;
+      mark(contentObj(i));
+      push(`${contentObj(i)} 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}endstream\nendobj\n`);
+
+      // image
+      mark(imageObj(i));
+      push(`${imageObj(i)} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${p.w} /Height ${p.h} `
+        + `/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${p.jpeg.length} >>\nstream\n`);
+      push(p.jpeg);
+      push('\nendstream\nendobj\n');
+    }
+
+    // xref
+    const xrefPos = byteLen;
+    let xref = `xref\n0 ${maxObj + 1}\n0000000000 65535 f \n`;
+    for (let k = 1; k <= maxObj; k++) {
+      xref += String(offsets[k] || 0).padStart(10, '0') + ' 00000 n \n';
+    }
+    push(xref);
+    push(`trailer\n<< /Size ${maxObj + 1} /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF\n`);
+
+    return new Blob(parts, { type: 'application/pdf' });
+  }
+
+  document.getElementById('go').addEventListener('click', async () => {
+    if (busy || !items.length) return;
+    busy = true;
+    actions2.style.display = 'none';
+    const mode = getSize();
+
+    try {
+      const pages = [];
+      for (let i = 0; i < items.length; i++) {
+        setStatus(`正在处理第 ${i + 1} / ${items.length} 张…`);
+        await new Promise(r => setTimeout(r, 0));
+        const bmp = await loadBitmap(items[i].file);
+        // 原图尺寸模式：长边限 2400px 控制文件体积
+        const { blob, w, h } = await toJpeg(bmp, mode === 'orig' ? 2400 : 2000);
+        const jpeg = new Uint8Array(await blob.arrayBuffer());
+        let pageW, pageH, margin = 0;
+        if (mode === 'a4p') { pageW = 595.28; pageH = 841.89; margin = 18; }
+        else if (mode === 'a4l') { pageW = 841.89; pageH = 595.28; margin = 18; }
+        else { pageW = w * 0.75; pageH = h * 0.75; }
+        pages.push({ jpeg, w, h, pageW, pageH, margin });
+        if (bmp.close) bmp.close();
+      }
+      setStatus('正在拼 PDF…');
+      await new Promise(r => setTimeout(r, 0));
+      pdfBlob = buildPdf(pages);
+      actions2.style.display = 'flex';
+      setStatus(`好了，${pages.length} 页，共 ${fmt(pdfBlob.size)}。`);
+    } catch (e) {
+      setStatus('出错了：' + (e && e.message ? e.message : '未知原因') + '，试试少选几张。', true);
+    }
+    busy = false;
+  });
+
+  document.getElementById('download').addEventListener('click', () => {
+    if (!pdfBlob) return;
+    const d = new Date();
+    const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(pdfBlob);
+    a.download = `图片合成的PDF_${stamp}.pdf`;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+    setStatus('已保存，看一下手机的「下载」里。');
+  });
+
+})();
+</script>
+</body>
+</html>
