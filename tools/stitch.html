@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>多张图拼成一张长图 · 在线免费</title>
+<meta name="description" content="把多张图上下拼成一张长图，或左右拼成横图。按原顺序，画质不掉。文件不上传。">
+<link rel="stylesheet" href="../assets/common.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap"><a class="back" href="../index.html">‹ 返回</a><h1>拼长图</h1></div>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <h2>几张图，拼成一张</h2>
+    <p>截图、流程、聊天记录，想让人一口气看完，就得拼成一张。</p>
+  </div>
+
+  <div class="drop" id="drop">
+    <div class="big">点这里选图片</div>
+    <div class="sub">按选的顺序拼，选完可以上下调</div>
+    <input type="file" id="file" accept="image/*" multiple>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="field">
+      <label>怎么拼</label>
+      <div class="chips" id="dir">
+        <button class="chip on" data-v="v">上下拼</button>
+        <button class="chip" data-v="h">左右拼</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>图之间留不留缝</label>
+      <div class="chips" id="gap">
+        <button class="chip on" data-v="0">不留</button>
+        <button class="chip" data-v="12">留一点</button>
+        <button class="chip" data-v="40">留宽一点</button>
+      </div>
+      <div class="hint">留缝是白色，看起来像分开的几段。</div>
+    </div>
+    <div class="field">
+      <label>输出格式</label>
+      <div class="chips" id="fmt">
+        <button class="chip on" data-v="jpeg">JPG（文件小）</button>
+        <button class="chip" data-v="png">PNG（更清晰）</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="list" id="list"></div>
+
+  <div class="btn-row" id="actions" style="display:none">
+    <button class="btn ghost" id="clear">清空</button>
+    <button class="btn" id="go">拼起来</button>
+  </div>
+  <div class="btn-row" id="actions2" style="display:none">
+    <button class="btn" id="download">下载长图</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <footer>
+    <p><span class="safe">图片没有离开你的设备。</span>拼接是在浏览器里画完的，中间没有服务器。</p>
+    <p>一次别超过 20 张。手机拼特别长的图可能内存不够，页面会告诉你。</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const drop = document.getElementById('drop');
+  const fileInput = document.getElementById('file');
+  const listEl = document.getElementById('list');
+  const statusEl = document.getElementById('status');
+  const actions = document.getElementById('actions');
+  const actions2 = document.getElementById('actions2');
+
+  let items = [];
+  let outBlob = null, outExt = 'jpg';
+  let busy = false;
+
+  function chipGroup(id) {
+    const box = document.getElementById(id);
+    box.addEventListener('click', e => {
+      const b = e.target.closest('.chip');
+      if (!b) return;
+      [...box.children].forEach(c => c.classList.remove('on'));
+      b.classList.add('on');
+      outBlob = null; actions2.style.display = 'none';
+    });
+    return () => box.querySelector('.chip.on').dataset.v;
+  }
+  const getDir = chipGroup('dir');
+  const getGap = chipGroup('gap');
+  const getFmt = chipGroup('fmt');
+
+  drop.addEventListener('click', () => fileInput.click());
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); add([...e.dataTransfer.files]); });
+  fileInput.addEventListener('change', () => { add([...fileInput.files]); fileInput.value = ''; });
+
+  function add(fs) {
+    const imgs = fs.filter(f => f.type.startsWith('image/'));
+    if (!imgs.length) return;
+    for (const f of imgs) items.push({ file: f, url: URL.createObjectURL(f) });
+    outBlob = null; actions2.style.display = 'none';
+    render(); setStatus('');
+  }
+
+  document.getElementById('clear').addEventListener('click', () => {
+    if (busy) return;
+    items.forEach(i => URL.revokeObjectURL(i.url));
+    items = []; outBlob = null;
+    render(); setStatus('');
+  });
+
+  function render() {
+    listEl.innerHTML = '';
+    items.forEach((it, i) => {
+      const div = document.createElement('div');
+      div.className = 'item';
+      div.innerHTML = `
+        <img class="thumb" src="${it.url}" alt="">
+        <div class="meta">
+          <div class="name">第 ${i + 1} 张 · ${esc(it.file.name)}</div>
+          <div class="size">${fmt(it.file.size)}</div>
+        </div>
+        <button class="x" data-a="up" data-i="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button class="x" data-a="down" data-i="${i}" ${i === items.length - 1 ? 'disabled' : ''}>↓</button>
+        <button class="x" data-a="del" data-i="${i}">×</button>`;
+      listEl.appendChild(div);
+    });
+    listEl.querySelectorAll('.x').forEach(b => b.addEventListener('click', () => {
+      if (busy) return;
+      const i = Number(b.dataset.i), a = b.dataset.a;
+      if (a === 'del') { URL.revokeObjectURL(items[i].url); items.splice(i, 1); }
+      if (a === 'up' && i > 0) [items[i - 1], items[i]] = [items[i], items[i - 1]];
+      if (a === 'down' && i < items.length - 1) [items[i + 1], items[i]] = [items[i], items[i + 1]];
+      outBlob = null; actions2.style.display = 'none';
+      render();
+    }));
+    actions.style.display = items.length ? 'flex' : 'none';
+  }
+
+  function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+  function fmt(b){ return b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(0) + ' K' : (b/1048576).toFixed(2) + ' M'; }
+  function setStatus(m, bad){ statusEl.textContent = m; statusEl.className = 'status' + (bad ? ' bad' : ''); }
+
+  async function loadBitmap(file) {
+    if (window.createImageBitmap) {
+      try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch (e) {}
+      try { return await createImageBitmap(file); } catch (e) {}
+    }
+    return await new Promise((res, rej) => {
+      const img = new Image();
+      img.onload = () => res(img);
+      img.onerror = rej;
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  const MAX_SIDE = 15000;      // iOS / Android 的 canvas 单边上限保守值
+  const MAX_AREA = 6e7;        // 面积上限，防内存爆
+
+  document.getElementById('go').addEventListener('click', async () => {
+    if (busy || !items.length) return;
+    busy = true;
+    actions2.style.display = 'none';
+    const dir = getDir(), gap = Number(getGap()), fmtOut = getFmt();
+
+    try {
+      const bmps = [];
+      for (let i = 0; i < items.length; i++) {
+        setStatus(`正在读第 ${i + 1} / ${items.length} 张…`);
+        await new Promise(r => setTimeout(r, 0));
+        bmps.push(await loadBitmap(items[i].file));
+      }
+
+      // 原尺寸先算总尺寸
+      let totalW, totalH;
+      if (dir === 'v') {
+        totalW = Math.max(...bmps.map(b => b.width));
+        totalH = bmps.reduce((s, b) => s + b.height, 0) + gap * (bmps.length - 1);
+      } else {
+        totalH = Math.max(...bmps.map(b => b.height));
+        totalW = bmps.reduce((s, b) => s + b.width, 0) + gap * (bmps.length - 1);
+      }
+
+      // 超限就整体等比缩小
+      let scale = 1;
+      if (totalW > MAX_SIDE || totalH > MAX_SIDE) scale = Math.min(MAX_SIDE / totalW, MAX_SIDE / totalH);
+      if (totalW * totalH * scale * scale > MAX_AREA) scale = Math.min(scale, Math.sqrt(MAX_AREA / (totalW * totalH)));
+      if (scale < 1) {
+        setStatus('这张长图太长，会自动缩小一点再拼（不然手机会崩）…');
+        await new Promise(r => setTimeout(r, 600));
+      }
+
+      const cw = Math.round(totalW * scale), ch = Math.round(totalH * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = cw; canvas.height = ch;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, cw, ch);
+      ctx.imageSmoothingQuality = 'high';
+
+      let cursor = 0;
+      for (const b of bmps) {
+        const w = Math.round(b.width * scale), h = Math.round(b.height * scale);
+        if (dir === 'v') {
+          const x = Math.round((cw - w) / 2);
+          ctx.drawImage(b, x, Math.round(cursor), w, h);
+          cursor += h + gap * scale;
+        } else {
+          const y = Math.round((ch - h) / 2);
+          ctx.drawImage(b, Math.round(cursor), y, w, h);
+          cursor += w + gap * scale;
+        }
+        if (b.close) b.close();
+      }
+
+      setStatus('正在导出…');
+      await new Promise(r => setTimeout(r, 0));
+      const mime = fmtOut === 'png' ? 'image/png' : 'image/jpeg';
+      const q = fmtOut === 'png' ? undefined : 0.92;
+      outBlob = await new Promise(r => canvas.toBlob(r, mime, q));
+      outExt = fmtOut === 'png' ? 'png' : 'jpg';
+
+      if (!outBlob) {
+        setStatus('导出失败，图太大了。少选几张，或者选 JPG 试试。', true);
+      } else {
+        actions2.style.display = 'flex';
+        setStatus(`拼好了：${cw} × ${ch} 像素，${fmt(outBlob.size)}。${scale < 1 ? '（已经缩小处理过）' : ''}`);
+      }
+    } catch (e) {
+      setStatus('出错了：' + (e && e.message ? e.message : '可能是图太大内存不够') + '，少选几张试试。', true);
+    }
+    busy = false;
+  });
+
+  document.getElementById('download').addEventListener('click', () => {
+    if (!outBlob) return;
+    const d = new Date();
+    const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(outBlob);
+    a.download = `长图_${stamp}.${outExt}`;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+    setStatus('已保存，看一下手机的「下载」里。');
+  });
+
+})();
+</script>
+</body>
+</html>
