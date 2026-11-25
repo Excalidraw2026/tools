@@ -22,19 +22,19 @@
 
   <div class="drop" id="drop">
     <div class="big">点这里选图片</div>
-    <div class="sub">一次可选多张，选好以后顺序可以调</div>
+    <div class="sub">一次可选多张 · 电脑上也可以直接把图拖进来</div>
     <input type="file" id="file" accept="image/*" multiple>
   </div>
 
   <div class="card" style="margin-top:14px">
     <div class="field">
-      <label>页面多大</label>
+      <label>每一页多大</label>
       <div class="chips" id="size">
         <button class="chip on" data-v="a4p">A4 竖</button>
         <button class="chip" data-v="a4l">A4 横</button>
-        <button class="chip" data-v="orig">按图片尺寸</button>
+        <button class="chip" data-v="orig">跟图一样大</button>
       </div>
-      <div class="hint">交材料基本都用 A4 竖。选「按图片尺寸」文件会更小，但打印时会按原比例缩。</div>
+      <div class="hint">交材料基本都用 A4 竖。选「跟图一样大」文件更小，但打印时可能撑不满一页。</div>
     </div>
   </div>
 
@@ -128,7 +128,8 @@
       pdfBlob = null; actions2.style.display = 'none';
       render();
     }));
-    actions.style.display = items.length ? 'flex' : 'none';
+    actions.style.display = 'flex';
+    document.getElementById('go').disabled = items.length === 0;
   }
 
   function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
