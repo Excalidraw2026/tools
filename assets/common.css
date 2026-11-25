@@ -133,7 +133,7 @@ footer .safe{color:var(--brand);font-weight:600}
 }
 .tool:active{transform:scale(.995);border-color:var(--brand)}
 .tool .body{flex:1;min-width:0}
-.tool .arrow{flex:none;color:#b6b2a9;font-size:22px;line-height:1;padding-top:1px}
+.tool .arrow{flex:none;color:#8c887f;font-size:26px;line-height:1;padding-top:0}
 .tool .t{font-size:17px;font-weight:700;margin-bottom:5px}
 .tool .d{font-size:14px;color:var(--muted);line-height:1.6}
 .tool .tag{
